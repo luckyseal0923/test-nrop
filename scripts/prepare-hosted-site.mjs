@@ -1,0 +1,18 @@
+import { mkdir, cp, readFile, writeFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+const source = resolve('.'), target = resolve('sites/nrop-practice');
+const manifest = JSON.parse(await readFile(join(target, '.openai/hosting.json'), 'utf8'));
+if (!manifest.project_id) throw new Error('請先註冊 Site 並保留 project_id');
+for (const dir of ['src','assets','apps-script','server']) await cp(join(source,dir),join(target,dir),{recursive:true});
+await mkdir(join(target,'scripts'),{recursive:true});
+await cp(join(source,'scripts/build-apps-script.mjs'),join(target,'scripts/build-apps-script.mjs'));
+let html = await readFile('index.html','utf8');
+html = html.replace(/<details class="setup-details">[\s\S]*?<\/details>/, '<details class="setup-details"><summary>關於這個練習工作區</summary><p>此網站僅供擁有者透過 ChatGPT 登入使用。選擇 Google 模式會儲存到你的練習試算表；示範模式只保存在目前瀏覽器。請使用合成資料。</p></details>');
+await writeFile(join(target,'index.html'),html);
+const pkg = JSON.parse(await readFile('package.json','utf8'));
+pkg.scripts = {build:'node scripts/build-worker.mjs',test:'node --test',dev:'node scripts/preview-worker.mjs'};
+await writeFile(join(target,'package.json'),JSON.stringify(pkg,null,2)+'\n');
+await cp('package-lock.json',join(target,'package-lock.json'));
+await writeFile(join(target,'.gitignore'),'.env*\n!.env.example\nnode_modules/\ndist/\n.frontend/\noutputs/\n*.log\n');
+await writeFile(join(target,'.env.example'),'SHEETS_API_URL=\nSHEETS_API_TOKEN=\nSHEETS_DOCUMENT_URL=\n');
+console.log('已同步白名單程式檔；沒有複製密鑰、原始碼歷史或本機資料。');

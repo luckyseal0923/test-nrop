@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NROP 練習工作區｜Google 試算表版</title>
+  <link rel="stylesheet" href="./assets/theme.css">
+  <link rel="stylesheet" href="./assets/practice.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-copy"><div class="brand-title">NROP <span class="brand-tag">練習工作區</span></div><div class="brand-subtitle">NURSING OPERATIONS / PRACTICE</div></div></div>
+    <div class="top-actions" id="sessionArea" hidden><span class="user-chip" id="userChip"></span><button class="btn btn-ghost" id="logoutBtn">返回入口</button></div>
+  </header>
+
+<main id="loginView" class="login-wrap">
+  <section class="login-card">
+    <div class="practice-intro"><span class="eyebrow">NURSING OPERATIONS</span><h1>讓每一班的動態，<br>清楚有序。</h1><p>從熟悉的護理流程出發，<br>練習打造自己的資訊工作區。</p>
+      <div class="practice-illustration" aria-hidden="true"><div class="illustration-top"><span>每日照護動態</span><i></i><i></i><i></i></div><div class="illustration-cards"><div>單位填報<strong>01</strong></div><div>床位動態<strong>02</strong></div><div>人力統計<strong>03</strong></div></div><div class="illustration-chart"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="illustration-bottom">N 班<span></span>D 班<span></span>E 班</div></div>
+      <small class="intro-note">暖白 × 森林綠 / GOOGLE SHEETS EDITION</small>
+    </div>
+    <div class="login-form"><span class="section-kicker">你的練習，從這裡開始</span><h2>NROP 練習模板</h2><p class="welcome-description">保留單位填報與管理儀表板，<br>用自己的試算表練習資料讀寫。</p>
+      <div class="connection-summary"><span class="connection-dot"></span><div><strong>Google 試算表</strong><p id="setupStatus">正在確認連線設定…</p></div></div>
+      <button class="btn btn-primary welcome-button" id="enterSheets" disabled>連接我的 Google 試算表 <span>↗</span></button>
+      <button class="btn btn-soft welcome-button" id="enterDemo">先用合成範例練習 <span>→</span></button>
+      <p class="welcome-hint">示範模式只儲存在這個瀏覽器。<br>連接試算表後，填報資料才會寫入 Google。</p>
+      <details class="setup-details"><summary>關於這個練習工作區</summary><p>此網站僅供擁有者透過 ChatGPT 登入使用。選擇 Google 模式會儲存到你的練習試算表；示範模式只保存在目前瀏覽器。請使用合成資料。</p></details>
+      <button class="btn btn-link reset-demo" id="resetDemo">重設本機示範資料</button><div id="authMessage" class="notice hidden" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+  <main id="appView" class="wrap hidden">
+    <div class="page-head"><div><h1 id="pageTitle">單位每日填報</h1><p id="pageSubtitle"></p></div><div class="tabs"><button class="tab active" data-view="entry">單位填報</button><button class="tab" data-view="dashboard">管理儀表板</button><button class="tab" data-view="connection">資料連線</button><button class="tab" data-view="beds">床數管理</button></div></div>
+
+    <div id="modeBanner" class="notice mode-banner" role="status"></div>
+    <div class="platform-tools"><button type="button" class="btn btn-soft" id="refreshData">重新整理</button><span id="syncStatus" role="status"></span></div>
+    <div id="appError" class="notice error hidden" role="alert"></div>
+    <section id="entryView">
+      <div class="grid-2" id="entryLayout">
+      <div class="entry-forms">
+      <div id="standardEntryGrid">
+        <article class="card"><div class="card-head"><h2>當班動態資料</h2><span id="recordStatus" class="status empty">尚未填寫</span></div><div class="card-body">
+          <div class="form-context"><div class="context-box"><small id="entryUnitLabel">填報單位</small><div class="unit-context" id="entryUnitControl"></div></div><div class="context-box"><small>日期</small><input type="date" id="entryDate" style="border:0;background:transparent;width:100%;font-weight:700"></div><div class="context-box"><small>班別</small><select id="entryShift" style="border:0;background:transparent;width:100%;font-weight:700"><option value="N">N｜00–08</option><option value="D">D｜08–16</option><option value="E">E｜16–24</option></select></div><div class="context-box"><small>有效床數</small><strong><span id="bedCount">0</span> 床</strong></div></div>
+          <div id="previousNotice" class="notice hidden"></div>
+          <div class="notice hidden" id="openingControls"><p>首次啟用的單位，由管理者確認期初住院人數。</p><label>期初住院人數 <input id="openingPatients" type="number" min="0" step="1" value="0"></label> <button type="button" class="btn btn-soft" id="setOpening">設定期初人數</button></div>
+          <div class="input-section"><h3>人力與前班基準</h3><div class="entry-grid"><div class="number-field"><label>實際上班人力 <span class="required">*</span></label><input id="staff" type="number" min="0" step="0.001" inputmode="decimal" required value="0"></div><div class="number-field"><label>前一班住院人數</label><input id="previous" type="number" readonly value="0"></div></div></div>
+          <div class="input-section"><h3>當班異動（非累計）</h3><div id="admissionNotice" class="notice hidden"></div><div class="entry-grid" id="eventFields"></div><div id="admissionSummary" class="formula hidden" style="margin-top:14px"></div></div>
+          <div class="input-section"><h3>系統自動計算</h3><div class="calc-strip"><div class="calc"><small>當班住院病人數</small><strong id="patientCount">0</strong></div><div class="calc"><small>空床數</small><strong id="emptyBeds">0</strong></div><div class="calc over"><small>超床數</small><strong id="overBeds">0</strong></div></div></div>
+          <div class="actions"><button class="btn btn-soft" id="saveDraft">暫存</button><button class="btn btn-primary" id="submitRecord">正式送出</button></div>
+        </div></article>
+      </div>
+      <div id="specialEntryView" class="hidden">
+        <article class="card"><div class="card-head"><div><h2 id="specialFormTitle">特殊單位填報</h2><small style="color:var(--muted)">本區除合計外均為人工輸入</small></div><span id="specialRecordStatus" class="status empty">尚未填寫</span></div><div class="card-body">
+          <div class="form-context"><div class="context-box"><small id="specialUnitLabel">填報單位</small><div class="unit-context" id="specialUnitControl"></div></div><div class="context-box"><small>日期</small><input type="date" id="specialDate" style="border:0;background:transparent;width:100%;font-weight:700"></div><div class="context-box"><small>班別</small><select id="specialShift" style="border:0;background:transparent;width:100%;font-weight:700"><option value="N">N｜00–08</option><option value="D">D｜08–16</option><option value="E">E｜16–24</option></select></div><div class="context-box"><small>參考床數</small><strong id="specialBeds">—</strong></div></div>
+          <div class="input-section"><h3>當班填報內容</h3><div id="staffBreakdownNotice" class="notice hidden"></div><div class="entry-grid" id="specialFields"></div></div>
+          <div class="actions"><button class="btn btn-soft" id="saveSpecialDraft">暫存</button><button class="btn btn-primary" id="submitSpecialRecord">正式送出</button></div>
+        </div></article>
+      </div>
+      </div>
+      <aside class="card" id="calculationGuide" aria-labelledby="calculationGuideTitle"><div class="card-head"><h2 id="calculationGuideTitle">計算說明</h2></div><div class="card-body"><div class="formula calculation-guide" id="calculationRules"></div><h3 style="font-size:15px;margin:22px 0 12px">今日班別進度</h3><div class="side-list" id="shiftProgress"></div></div></aside>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="hidden">
+      <div class="filterbar" style="margin-bottom:16px"><input type="date" id="dashboardDate"><select id="dashboardShift"><option value="N">N 班｜00–08</option><option value="D">D 班｜08–16</option><option value="E">E 班｜16–24</option></select></div>
+      <div class="subtabs"><button class="subtab active" data-panel="shiftPanel">班別即時</button><button class="subtab" data-panel="dailyPanel">全日彙整</button><button class="subtab" data-panel="alertsPanel">異常 Log</button></div>
+      <div id="shiftPanel"></div><div id="dailyPanel" class="hidden"><article class="card dashboard-section" id="specialOpsCard"><div class="card-head"><div><h2>特殊單位每日營運統整</h2><small style="color:var(--muted)">急診、產房、手術室、護理之家與洗腎室</small></div></div><div class="table-wrap"><table><thead><tr><th>單位</th><th>當日主要數值</th><th>N 班</th><th>D 班</th><th>E 班</th></tr></thead><tbody id="specialOpsTable"></tbody></table></div></article></div><div id="alertsPanel" class="hidden"></div>
+      <article class="card" style="margin-bottom:20px"><div class="card-head"><div><h2>全日統整（N＋D＋E）</h2><small style="color:var(--muted)">彙整所選日期三個班別的當日動態</small></div><span class="status done" id="dailyStatus">0/0 班完成</span></div><div class="card-body"><div class="summary-grid" style="margin-bottom:0"><div class="metric"><div class="label">E 班期末住院</div><span class="value" id="dClosing">0</span><span class="unit">人</span></div><div class="metric"><div class="label">當日住院</div><span class="value" id="dAdmissions">0</span><span class="unit">人次</span></div><div class="metric"><div class="label">當日出院</div><span class="value" id="dDischarges">0</span><span class="unit">人次</span></div><div class="metric"><div class="label">機構內轉入／轉出</div><span class="value" id="dTransfers">0／0</span><span class="unit">人次</span></div><div class="metric"><div class="label">病危／死亡</div><span class="value" id="dCriticalDeaths">0／0</span><span class="unit">人次</span></div><div class="metric"><div class="label">三班上班人力合計</div><span class="value" id="dStaff">0</span><span class="unit">人次</span></div></div></div></article>
+      <div style="font-weight:800;color:var(--navy);margin:2px 0 12px">所選班別統計</div>
+      <div class="summary-grid"><div class="metric"><div class="label">有效床數</div><span class="value" id="mBeds">0</span><span class="unit">床</span></div><div class="metric"><div class="label">住院病人</div><span class="value" id="mPatients">0</span><span class="unit">人</span></div><div class="metric"><div class="label">空床</div><span class="value" id="mEmpty">0</span><span class="unit">床</span></div><div class="metric warning"><div class="label">超床</div><span class="value" id="mOver">0</span><span class="unit">床</span></div><div class="metric"><div class="label">實際上班人力</div><span class="value" id="mStaff">0</span><span class="unit">人</span></div><div class="metric"><div class="label">全院護病比</div><span class="value" id="mRatio">—</span></div><div class="metric"><div class="label">填報進度</div><span class="value" id="mProgress">0/0</span><span class="unit">單位</span></div></div>
+      <div class="dashboard-grid" style="margin-bottom:20px">
+        <article class="card"><div class="card-head"><h2>全院住院摘要（當日 E 班）</h2></div><div class="table-wrap"><table><thead><tr><th>全院總病床數</th><th>全院總病人數</th><th>全院總空床數</th></tr></thead><tbody><tr><td class="num"><b id="hospitalBeds">626</b></td><td class="num"><b id="closingPatients">0</b></td><td class="num"><b id="hospitalEmpty">626</b></td></tr></tbody></table></div><div style="padding:10px 20px;color:var(--muted);font-size:12px">總病人數＝一般病房＋特殊單位住院病人數；總空床數＝有效病床數－總病人數</div></article>
+        <article class="card"><div class="card-head"><h2>護理之家（獨立統計）</h2></div><div class="table-wrap"><table><thead><tr><th>總病床數</th><th>機構內住民</th><th>保留床位</th><th>實際空床</th></tr></thead><tbody><tr><td class="num" id="nhBeds">39</td><td class="num"><b id="nhResidents">—</b></td><td class="num"><b id="nhReserved">—</b></td><td class="num"><b id="nhEmpty">—</b></td></tr></tbody></table></div></article>
+      </div>
+      <article class="card"><div class="card-head"><h2>各單位即時統計</h2><button class="btn btn-soft" id="exportBtn">匯出 CSV</button></div><div class="table-wrap"><table><thead><tr><th>單位</th><th>床數</th><th>住院</th><th>空床</th><th>超床</th><th>占床率</th><th>上班人力</th><th>護病比</th><th>病危</th><th>狀態</th></tr></thead><tbody id="unitTable"></tbody></table></div></article>
+      <div class="dashboard-grid dashboard-section"><article class="card"><div class="card-head"><h2>各單位占床率</h2></div><div class="card-body"><div class="chart" id="occupancyChart"></div></div></article><article class="card"><div class="card-head"><h2>待完成填報</h2></div><div class="card-body"><div class="side-list" id="pendingList"></div></div></article></div>
+      <article class="card dashboard-section"><div class="card-head"><div><h2>異常與漏填紀錄</h2><small style="color:var(--muted)">優先顯示過去未填寫、僅暫存及缺少必要欄位的資料</small></div><span class="status draft" id="alertCount">0 筆待處理</span></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>班別</th><th>單位</th><th>異常類型</th><th>異常內容</th><th>處理狀態</th></tr></thead><tbody id="alertTable"></tbody></table></div></article>
+      <article class="card dashboard-section"><div class="card-head"><h2>異常通報判定規則</h2></div><div class="card-body"><div class="formula">漏填異常：過去班別沒有紀錄、只有暫存、實際上班人力或必填事件欄位缺值。營運提醒：住院人數超過有效床數。住院人數與空床數由系統自動計算，不列為人工填報異常；數字 0 是有效資料，也不視為漏填。</div></div></article>
+    </section>
+<section id="connectionView" class="hidden"><article class="card"><div class="card-head"><h2>目前的資料來源</h2></div><div class="card-body"><div class="connection-grid"><div><small>現在的儲存位置</small><h3 id="currentStorage"></h3></div><div><small>Google 讀寫服務</small><h3 id="sheetConnectionLabel"></h3></div></div><a class="btn btn-soft sheet-link" id="sheetLink" target="_blank" rel="noopener" hidden>開啟我的練習試算表 ↗</a><p>兩種模式的資料各自獨立。Google 連線中斷時會提示錯誤，請重新整理確認結果。</p><p>練習表透過 Apps Script 讀寫。設定步驟見專案 README；此版未提供正式平台的帳號審核與多人權限。</p></div></article><article class="card dashboard-section"><div class="card-head"><h2>最近操作紀錄</h2></div><div class="table-wrap"><table><thead><tr><th>時間</th><th>操作</th><th>對象</th></tr></thead><tbody id="practiceAudit"></tbody></table></div></article></section>
+    <section id="bedsView" class="hidden">
+      <article class="card"><div class="card-head"><h2>有效病床數管理</h2><button type="button" class="btn btn-soft" id="reloadBedSettings">重新整理床數</button></div><div class="card-body">
+        <p>指定生效日期，N／D／E 三班一併套用；生效日期以前的報表母數維持不變。可選今天或未來日期。</p>
+        <div id="bedSettingsFeedback" class="notice hidden" role="status"></div>
+        <div id="bedSettingsContent" class="hidden">
+          <div class="formula">目前全院有效病床數：<strong id="bedHospitalTotal">—</strong>（一般病房及特殊住院單位）。其他單位維持原有的參考床數或獨立統計用途。</div>
+          <div id="bedUnitCards"></div>
+        </div>
+      </div></article>
+    </section>
+    <div class="footnote" id="storageFootnote"></div>
+  </main>
+  <dialog id="bedEditDialog" class="bed-edit-dialog" aria-labelledby="bedEditTitle">
+    <div class="bed-edit-head"><div><h2 id="bedEditTitle">調整病床數</h2><p id="bedEditType"></p></div><button type="button" class="btn btn-soft" id="closeBedEdit" aria-label="關閉床數調整">關閉</button></div>
+    <div class="bed-edit-layout">
+      <form id="bedSettingsForm">
+        <div class="bed-edit-context"><div><small>填報單位</small><strong id="bedUnitName">—</strong></div><div><small>目前床數</small><strong id="bedEditCurrent">—</strong></div></div>
+        <div class="bed-edit-fields"><div class="field"><label for="bedEffectiveDate">生效日期</label><input id="bedEffectiveDate" type="date" max="2100-12-31" required></div><div class="field"><label>該日期原床數</label><strong id="bedOriginal">—</strong></div><div class="field"><label for="newBeds">調整後床數</label><input id="newBeds" type="number" min="0" max="9999" step="1" required></div></div>
+        <div class="field"><label for="bedReason">調整原因（選填）</label><input id="bedReason" maxlength="400"></div>
+        <p class="notice bed-warning">更改病床數將影響計算母數，請確認調整內容是否正確。生效日 N／D／E 三班共同套用，之前日期維持原母數；若有後續排定設定，依其日期接續套用。</p>
+        <div id="bedEditFeedback" class="notice hidden" role="alert"></div>
+        <div class="actions"><button type="button" class="btn btn-soft" id="cancelBedEdit">取消調整</button><button type="submit" class="btn btn-primary">核對調整內容</button></div>
+      </form>
+      <aside class="bed-edit-history" aria-label="本單位床數調整歷史">
+        <h3>過去調整紀錄</h3><p id="bedHistoryNote" class="bed-history-note"></p><div id="bedUnitHistory" class="bed-history-list"></div>
+        <h3>床數設定沿革</h3><p class="bed-history-note">依生效日期排列，包含原始基準及已排定設定。</p><div id="bedUnitTimeline" class="bed-history-list"></div>
+      </aside>
+    </div>
+  </dialog>
+  <dialog id="bedConfirmDialog" aria-labelledby="bedConfirmTitle"><form id="bedConfirmForm">
+    <h2 id="bedConfirmTitle">確認調整病床數</h2>
+    <p class="notice bed-warning"><strong>更改病床數將影響計算母數，請確認調整內容是否正確。</strong></p>
+    <div id="bedConfirmSummary" class="formula bed-confirm-summary"></div>
+    <p>請再次核對單位、床數與生效日期。確認內容有效時間為五分鐘。</p>
+    <label class="bed-reviewed"><input id="bedReviewed" type="checkbox" required> 我已確認單位、生效日期及調整內容正確。</label>
+    <div id="bedConfirmFeedback" class="notice hidden" role="alert"></div>
+    <div class="actions"><button type="button" class="btn btn-soft" id="cancelBedConfirm">取消</button><button type="submit" class="btn btn-primary">確認並儲存床數</button></div>
+  </form></dialog>
+  <footer class="site-footer" aria-label="系統資訊與網站版本">
+    <div class="footer-meta">
+      <span id="appVersion"></span>
+      <span class="footer-separator" aria-hidden="true">｜</span>
+      <span id="connectionStatus" role="status" data-state="loading">連線中…</span>
+
+    </div>
+    <span id="versionStatus" role="status" aria-live="polite"></span>
+  </footer>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <dialog id="resetDemoDialog"><h2>重設本機示範資料？</h2><p>這會清除這個瀏覽器的示範修改，重新建立今天的合成範例。Google 試算表不受影響。</p><div class="actions"><button id="cancelResetDemo" class="btn btn-soft">取消</button><button id="confirmResetDemo" class="btn btn-primary">重設示範</button></div></dialog>
+<dialog id="leaveDialog"><h2>還有尚未儲存的內容</h2><p>返回入口會捨棄尚未儲存的修改。</p><div class="actions"><button id="cancelLeave" class="btn btn-soft">繼續編輯</button><button id="confirmLeave" class="btn btn-primary">返回入口</button></div></dialog>
+<script type="module" src="/src/practice-main.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+import {nropMiddleware} from '../server/sheets-api.mjs';
+const secret='a'.repeat(48), env={SHEETS_API_URL:'https://script.google.com/macros/s/test-deployment/exec',SHEETS_API_TOKEN:secret};
+async function withServer(env, remote, fn) { const server=createServer(nropMiddleware(env,remote)); await new Promise(r=>server.listen(0,'127.0.0.1',r)); try { await fn('http://127.0.0.1:'+server.address().port); } finally { await new Promise(r=>server.close(r)); } }
+test('未連接時明確回報錯誤，不會假裝儲存成功',async()=>withServer({},null,async url=>{ const res=await fetch(url+'/api/nrop',{method:'POST',body:'{}'});assert.equal(res.status,503);assert.match((await res.json()).error.message,/尚未連接/); }));
+test('設定查詢不洩漏服務網址及密鑰',async()=>withServer(env,null,async url=>{ const text=await (await fetch(url+'/api/connection')).text(); assert.equal(JSON.parse(text).configured,true);assert.ok(!text.includes(secret));assert.ok(!text.includes('script.google.com')); }));
+test('讀寫請求由伺服器附加密鑰，瀏覽器不需要持有密鑰',async()=>withServer(env,async(url,init)=>{const body=JSON.parse(init.body);assert.equal(body.token,secret);assert.equal(body.method,'nrop_public_config');return Response.json({data:{units:[]}});},async url=>{ const res=await fetch(url+'/api/nrop',{method:'POST',body:JSON.stringify({method:'nrop_public_config'})});assert.deepEqual(await res.json(),{data:{units:[]}}); }));
+test('拒絕跨來源網站的請求',async()=>withServer(env,null,async url=>{const res=await fetch(url+'/api/nrop',{method:'POST',headers:{Origin:'https://other.example'},body:'{}'});assert.equal(res.status,403); }));
+test('不允許任意 RPC 與任意外部部署網址',async()=>{ await withServer(env,null,async url=>{assert.equal((await fetch(url+'/api/nrop',{method:'POST',body:JSON.stringify({method:'arbitrary'})})).status,400);});await withServer({...env,SHEETS_API_URL:'https://example.com'},null,async url=>assert.equal((await fetch(url+'/api/nrop',{method:'POST',body:'{}'})).status,503)); });
+test('Apps Script 登入 HTML、斷線與超大請求會明確拒絕',async()=>{await withServer(env,async()=>new Response('<html>Login</html>'),async url=>{ const res=await fetch(url+'/api/nrop',{method:'POST',body:JSON.stringify({method:'nrop_public_config'})});assert.equal(res.status,502);assert.match((await res.json()).error.message,/JSON/);});await withServer(env,null,async url=>assert.equal((await fetch(url+'/api/nrop',{method:'POST',body:'x'.repeat(33000)})).status,413));});
