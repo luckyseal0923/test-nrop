@@ -1,10 +1,11 @@
 import { newState, transact, taiwanDate } from './data-model.js';
 import { units, operationalUnits, shifts, admissionFieldsByUnit } from './catalog.js';
+import {accessToken} from './supabase-auth.js';
 const DEMO_KEY = 'nrop-practice-demo-v1';
 let mode = null;
-export function selectMode(value) { if (!['demo', 'sheets'].includes(value)) throw new Error('模式不正確'); mode = value; }
+export function selectMode(value) { if (!['demo', 'supabase'].includes(value)) throw new Error('模式不正確'); mode = value; }
 export function currentMode() { return mode; }
-export const storageLabel = () => mode === 'sheets' ? 'Google 試算表' : '本機示範（不會寫入 Google）';
+export const storageLabel = () => mode === 'supabase' ? 'Supabase' : '本機示範（不會寫入雲端）';
 export async function connectionInfo() {
   const response = await fetch('/api/connection', { signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error('資料服務目前無法使用，請稍後重試或確認網站設定。');
@@ -37,13 +38,16 @@ export async function rpc(method, params = {}) {
       localStorage.setItem(DEMO_KEY, JSON.stringify(result.state)); return result.data;
     });
   }
-  const response = await fetch('/api/nrop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, params }), signal: AbortSignal.timeout(50000) });
+  const response = await fetch('/api/nrop', { method: 'POST', headers: { 'Content-Type': 'application/json',Authorization:'Bearer '+await accessToken() }, body: JSON.stringify({ method, params }), signal: AbortSignal.timeout(50000) });
   const result = await response.json();
   if (result.error) throw Object.assign(new Error(result.error.message), { code: result.error.code });
-  if (!response.ok) throw new Error('Google 試算表讀寫失敗'); return result.data;
+  if (!response.ok) throw new Error('Supabase 讀寫失敗'); return result.data;
 }
 export async function resetDemo() { await navigator.locks.request(DEMO_KEY, () => localStorage.removeItem(DEMO_KEY)); }
 export function errorMessage(error) {
+  if (/Invalid login credentials/i.test(error?.message||'')) return '信箱或密碼不正確，請確認後再登入。';
+  if (/Email not confirmed/i.test(error?.message||'')) return '信箱尚未確認，請先開啟註冊確認信。';
+  if (/rate limit/i.test(error?.message||'')) return '寄信或登入次數已達暫時限制，請稍後再試。';
   if (/fetch|NetworkError|timeout|aborted/i.test(error?.message || '')) return '連線逾時或中斷，請重新整理確認儲存結果；系統不會自動切換資料來源。';
   return error?.message || '操作失敗，請稍後重試';
 }

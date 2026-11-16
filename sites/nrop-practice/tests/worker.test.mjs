@@ -1,11 +1,8 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {handleRequest} from '../server/worker.mjs';
-const origin='https://nrop.example',env={SHEETS_API_URL:'https://script.google.com/macros/s/example/exec',SHEETS_API_TOKEN:'test-secret-'.repeat(4),SHEETS_DOCUMENT_URL:'https://docs.google.com/spreadsheets/d/example/edit'};
-function req(path='/api/nrop',body={method:'nrop_public_config'},headers={}){return new Request(origin+path,{method:'POST',headers:{origin,'oai-authenticated-user-id':'owner','Content-Type':'application/json',...headers},body:JSON.stringify(body)});}
-test('未登入的 API 不接觸 Google',async()=>{let called=false;const r=await handleRequest(req('/api/nrop',{}, {'oai-authenticated-user-id':''}),env,{},()=>{called=true;});assert.equal(r.status,401);assert.equal(called,false);});
-test('拒絕跨來源、缺少來源與未知方法',async()=>{for(const request of [req('/api/nrop',{}, {origin:'https://other.example'}),req('/api/nrop',{}, {origin:''}),req('/api/nrop',{method:'remove_everything'})]){const r=await handleRequest(request,env,{},()=>assert.fail('不應接觸 Google'));assert.ok([403,400].includes(r.status));}});
-test('連線設定不洩漏密鑰或部署網址',async()=>{const r=await handleRequest(new Request(origin+'/api/connection',{headers:{'oai-authenticated-user-id':'owner'}}),env,{});const body=await r.text();assert.equal(JSON.parse(body).configured,true);assert.ok(!body.includes(env.SHEETS_API_TOKEN));assert.ok(!body.includes(env.SHEETS_API_URL));});
-test('代理只使用伺服器密鑰，保留 Google 業務錯誤',async()=>{let sent;const r=await handleRequest(req('/api/nrop',{method:'nrop_public_config',token:'forged'}),env,{},async(_,options)=>{sent=JSON.parse(options.body);return Response.json({error:{message:'版本衝突',code:'CONFLICT'}});});assert.equal(sent.token,env.SHEETS_API_TOKEN);assert.equal((await r.json()).error.code,'CONFLICT');});
-test('過大請求與 Google 非 JSON 回應會明確失敗',async()=>{const big=await handleRequest(req('/api/nrop',{method:'nrop_public_config',params:{text:'x'.repeat(33000)}}),env,{},()=>assert.fail('不應接觸 Google'));assert.equal(big.status,413);const failed=await handleRequest(req(),env,{},async()=>new Response('<html>login</html>'));assert.equal(failed.status,502);});
-test('前端需要身份且只提供已打包資產',async()=>{const assets={'/index.html':{type:'text/html',data:Buffer.from('<h1>NROP</h1>').toString('base64')}};assert.equal((await handleRequest(new Request(origin),env,assets)).status,401);const headers={'oai-authenticated-user-id':'owner'};const good=await handleRequest(new Request(origin,{headers}),env,assets);assert.equal(await good.text(),'<h1>NROP</h1>');assert.equal((await handleRequest(new Request(origin+'/.env.local',{headers}),env,assets)).status,404);});
+import test from'node:test';import assert from'node:assert/strict';import{handleRequest}from'../server/worker.mjs';
+const url='https://nrop.example',env={SUPABASE_URL:'https://gvyxlgunphusxxruvytn.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_test'};
+test('公開入口與示範不需要 ChatGPT 身份，雲端資料 API 必須登入 Supabase',async()=>{
+ const assets={'/index.html':{type:'text/html',data:Buffer.from('<h1>NROP</h1>').toString('base64')}};
+ const page=await handleRequest(new Request(url),env,assets);assert.equal(page.status,200);assert.match(page.headers.get('content-security-policy'),/gvyxlgunphusxxruvytn/);
+ const api=await handleRequest(new Request(url+'/api/nrop',{method:'POST',headers:{origin:url},body:'{}'}),env,assets,()=>assert.fail('匿名不可接觸資料庫'));assert.equal(api.status,401);
+ assert.equal((await handleRequest(new Request(url+'/.env.local'),env,assets)).status,404);
+});

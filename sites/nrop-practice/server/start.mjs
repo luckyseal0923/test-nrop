@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { loadEnvFile } from 'node:process';
-import { nropMiddleware } from './sheets-api.mjs';
+import { nropMiddleware } from './api.mjs';
 try { loadEnvFile('.env.local'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 const root = resolve('dist'), port = Number(process.env.PORT || 4178);
 const api = nropMiddleware(process.env);

@@ -1,111 +1,92 @@
-# NROP 練習工作區：Google 試算表版
+# NROP 練習工作區：Supabase 版
 
-由原本 `NROP護理資訊平台` 的網頁程式複製，改為暖白、森林綠的個人練習模板。保留 28 個單位、N／D／E 班填報、管理儀表板、CSV 匯出、歷史床數與操作紀錄。原專案與正式資料沒有變動。
+暖白、森林綠的個人護理資訊平台練習模板。保留 28 個單位、N／D／E 班、單位填報、管理儀表板、CSV、期初人數與歷史床數；本次不更動原正式 NROP 專案。
 
-練習試算表：https://docs.google.com/spreadsheets/d/1LjhAJbjXU3PYkNw511ciSqmhQxQXUfdybqQyKddnlRM/edit
+- 網站：https://nrop-sheets-practice.chih-wei-chang.chatgpt.site
+- GitHub：https://github.com/luckyseal0923/test-nrop
+- Supabase 專案：`gvyxlgunphusxxruvytn`
 
-線上私人練習版：https://nrop-sheets-practice.chih-wei-chang.chatgpt.site （使用擁有者的 ChatGPT 帳號登入）。已發布至 ChatGPT Sites，前端為靜態資產，後端由 Worker 轉送 Google Apps Script；不必開著本機電腦。線上來源位於 `sites/nrop-practice`；本機版本仍可依下列方式執行。
+目前資料來源已改為 Supabase，執行中的網頁與 API 不再呼叫 Google Apps Script。舊 Google 試算表保留原資料，沒有刪除，也沒有自動搬入新帳號。
 
-程式碼倉庫：https://github.com/luckyseal0923/test-nrop 。倉庫不含 Google 密鑰或 `.env.local`；重新下載時需要自行建立本機設定，線上執行設定則保存在 Sites。
+## 開始練習
 
-## 立即開啟
+開啟網站，以自己的信箱註冊／登入。新註冊帳號需先確認信箱；這個 Supabase 帳號與 Supabase 管理後台、ChatGPT 帳號分開。
 
-Node.js 20.19 以上，建議 22 LTS。
+每個帳號有獨立的練習資料，不會看見其他帳號的填報。首次登入建立空白工作區及 28 單位床數。一般病房先設定第一班期初人數，再正式送出。只想試畫面可選本機示範，資料只存目前瀏覽器。
+
+## 本機執行
+
+使用 Node.js 22.12 以上，建議 Node.js 24。
 
 ```powershell
-npm install
+npm ci
+node scripts/create-local-env.mjs
+```
+
+在未追蹤的 `.env.local` 填入：
+
+```dotenv
+SUPABASE_URL=https://你的專案.supabase.co
+SUPABASE_PUBLISHABLE_KEY=你的sb_publishable金鑰
+PORT=4178
+```
+
+也接受現有 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。只使用公開的 publishable key；不需要也不要填入管理員 secret／service_role key。
+
+```powershell
 npm run dev
 ```
 
-開啟 http://127.0.0.1:5178 ，按「連接我的 Google 試算表」即可進入已設定的 Google 模式。本次已完成 Cloud／OAuth、初始化與第 1 版部署，並由網頁送出一筆急診 E 班合成資料，經試算表讀取核對成功。詳細結果見 [驗證紀錄](docs/驗證紀錄.md)。
+開啟 http://127.0.0.1:5178 。建置後的本機版以 `npm start` 開啟 http://127.0.0.1:4178 。目前本機服務仍限制 127.0.0.1；若搬到一般主機，需另外調整監聽位址與公開來源設定。
 
-若只想離線練習，可按「先用合成範例練習」。合成範例只保存在此瀏覽器，按入口的「重設本機示範資料」可重新產生今天的範例。此模式不會寫入 Google。
+## Supabase 初始化
 
-## 接上 Google 試算表
+在指定練習專案的 SQL Editor 執行完整 [supabase/INSTALL.sql](supabase/INSTALL.sql)。本次已在使用者指定的 `test-nrop` 專案執行成功。不要對原正式 NROP 專案執行本份 SQL。
 
-若 Google 顯示「系統已封鎖這個應用程式」，請先處理 [標準 Cloud 專案與 OAuth 設定](docs/Google_Cloud_OAuth設定指南.md)。本次依使用者選擇維持獨立網頁，不採試算表內嵌方式。
+只建立 `nrop_practice_*` 物件，可重跑而不清空資料。底層 `nrop_practice_workspaces` 以登入者 UUID 保存工作區，啟用 RLS；匿名不能讀取，登入者也只能讀寫自己。
 
-### 1. 準備讀寫程式
-
-目前 [Google 端的讀寫程式](https://script.google.com/home/projects/1ppR9sAj_Q5FG6LaF8r60mPQlXcEjiAxk0Yo4pYzLJ3rkOCuo49ik4Hjd/edit) 已設定 `SPREADSHEET_ID` 與 `API_TOKEN`、完成本人授權、執行 `setup` 並部署成功；本機 `.env.local` 也已接上 `/exec` 網址。**本機目前可直接使用，不必重做以下設定。** 下方保留從頭重建的完整步驟。
-
-1. 開啟上方的練習表，選「擴充功能 → Apps Script」。新建的專案可命名為「NROP 練習模板－試算表讀寫」。
-2. 將 [apps-script/Code.gs](apps-script/Code.gs) 全部貼到 `程式碼.gs`，取代空白的 `myFunction` 並儲存。這份檔案已包含所有單位、計算、驗證與讀寫功能，不必逐一加入其他 JS 檔。
-3. 選左側「專案設定」，在「指令碼屬性」加入：
-
-| 屬性 | 值 |
+| 物件 | 用途 |
 | --- | --- |
-| SPREADSHEET_ID | `1LjhAJbjXU3PYkNw511ciSqmhQxQXUfdybqQyKddnlRM` |
-| API_TOKEN | 本機 `.env.local` 的 `SHEETS_API_TOKEN` 值，整串複製；不要包含欄位名稱或等號 |
+| `nrop_practice_workspaces` | 每個帳號的完整狀態、整體版本與更新時間 |
+| `nrop_practice_records` | 可讀的填報檢視表，急診、產房、手術室、護理之家與透析數字各自展開 |
+| `nrop_practice_openings` | 期初住院人數 |
+| `nrop_practice_capacities` | 床數生效期間與版本 |
+| `nrop_practice_audit` | 最近操作紀錄 |
 
-`.env.local` 已在本機準備好並被 Git 排除。若之後從乾淨的程式碼開始，執行 `node scripts/create-local-env.mjs` 產生新的隨機密鑰。密鑰僅放本機設定與 Apps Script 指令碼屬性，不要放網頁 JS 或 Google 試算表儲存格。
+檢視表採 `security_invoker`，沿用底層 RLS。請在網頁修改資料；檢視表供查詢。空白／NULL 表示該單位不適用或未提供，0 是有效零值。急診留觀不混入病房住院，轉診不混入機構內轉入／出。
 
-### 2. 初始化與部署
+這是個人練習用的狀態保存方式，沒有完整正式平台的共用病房、帳號審核或主管角色。資料操作由後端共用模型驗證，資料庫以 revision 比對在單一交易提交，衝突時拒絕覆寫、不自動重送；操作紀錄最近 500 筆，工作區上限 8 MiB。
 
-1. 回到編輯器，在函式選單選 `setup`，按「執行」。依 Google 提示，使用自己的帳號授權這支程式讀寫試算表。
-2. `setup` 會建立／核對欄位、建立初始床數並隱藏 `_State`。初次沒有任何填報資料；**不會匯入瀏覽器的範例**。重跑 `setup` 會由既有狀態重建顯示分頁，保留已儲存的填報。
-3. 按右上「部署 → 新增部署作業」，類型選「網頁應用程式」。執行身分選自己，存取者選「所有人」。試算表本身維持私人；讀寫端每次仍檢查伺服器密鑰。若 Workspace 管理者不允許此部署方式，此模板的本機代理無法直接使用該部署，需要另調整驗證方式。
-4. 複製部署後以 `/exec` 結尾的網址。將它填入本機 `.env.local` 的 `SHEETS_API_URL`。保留既有 `SHEETS_API_TOKEN`。
-5. 停止並重新執行 `npm run dev`。入口的「連接我的 Google 試算表」會啟用。先進入、設定一般病房第一班的期初人數，再填報及儲存。
+## 發布網站
 
-只看到入口按鈕啟用代表設定有填，不代表 Google 已驗證；進入後讀取成功才會顯示「Google 試算表連線可用」。
-
-新建環境時，Google 的初始化授權、部署與真實讀寫都需要個別驗證。本次已在本人帳號完成；仍請以 Google 模式及試算表實際內容判斷儲存結果。
-
-### 3. 驗證有存進去
-
-1. 在 Google 模式選一個單位，輸入一筆合成資料，按「暫存」或「正式送出」。
-2. 確認畫面顯示儲存到 Google 試算表，並在練習表的 `Records` 找到相同日期、班別、單位及數字。
-3. 重新整理網站，確認內容仍相同。修改同一筆後，確認試算表不新增重複日期／班別／單位，版本會增加。
-4. 可在 `Audit` 查看操作紀錄。需要測試失敗流程時，暫時把本機部署網址填錯，重新啟動後應明確失敗，不會切換本機示範。
-
-## 儲存架構
+`sites/nrop-practice` 是同一網站的 Sites 來源。前端為靜態資產，Worker 提供受保護的 Supabase API：
 
 ```text
-網頁 → 本機 Node.js /api/nrop → Google Apps Script → 私人的 Google 試算表
+瀏覽器 → Supabase Auth 登入
+瀏覽器帶登入 JWT → 網站 API → Supabase RPC／RLS → 自己的資料
 ```
 
-Supabase 套件、環境變數、登入與遠端資料寫入已從執行中的網頁移除。`docs/before` 僅保留原始碼供學習對照，不參與建置。
+Sites 執行環境只有 `SUPABASE_URL` 與 `SUPABASE_PUBLISHABLE_KEY`。Google 的三個 SHEETS 設定已移除並套用。網站保留目前的公開存取設定，匿名只能使用入口及本機示範；雲端資料以 Supabase 登入保護，不依賴 ChatGPT 身份標頭。
 
-本機版入口不驗證身分、沒有原版的註冊審核與多人角色隔離，床數調整採內容再次確認。本機服務只綁 `127.0.0.1`，讀寫代理檢查本機同來源。若要提供同仁共同使用，需另外設計登入與各單位的權限。
-
-線上版另由 Sites 擁有者私人存取政策保護；後端也會檢查平台提供的登入身份與同來源請求。它仍是單一擁有者練習工作區，不提供多人單位權限。Google 連線設定與密鑰存於 Sites 執行環境，不會打包到網頁或來源倉庫。
-
-`_State` 是程式完整狀態，分段儲存在同一列；一次寫入，單一指令碼鎖防止兩個程式請求同時覆寫。`Records`、`Openings`、`Capacities` 與 `Audit` 為可閱讀的投影，**請在網頁編輯資料，不要直接修改投影或 `_State`**。這些分頁不設任意改值的匯入功能。若顯示分頁更新失敗，程式會提示資料已儲存，重新執行 `setup` 即可由完整狀態重建。Google 試算表不是 PostgreSQL；此實作不提供原版資料庫的交易／RLS 保證。
-
-`Records` 的 A:O 保留原欄位順序；P:AM 展開急診、產房、手術室、護理之家、洗腎室及分項住院的數字。急診／護理之家住院與出院、急診死亡會映射到共通欄位；留觀與轉診另列，不能混算為病房住院或機構內轉入／出。空白表示不適用或未提供，0 表示已填寫的零值。
-
-練習版完整狀態上限為約 128 萬個字元，操作紀錄保留最近 500 筆。所有數字與日期在服務端重新檢查；前班修改會重新計算後班、更新版本；版本不同會拒絕覆寫。連線中斷不自動重送寫入，請先重新整理確認結果。
-
-請使用合成資料練習。網頁沒有建立員工或病人名單的欄位。
-
-## 修改模板
-
-| 檔案 | 練習內容 |
-| --- | --- |
-| `assets/practice.css` | 主要色票、卡片、按鈕、響應式排版 |
-| `index.html` | 頁面文字、入口、各區塊結構 |
-| `src/catalog.js` | 單位名稱、床數、特殊單位欄位 |
-| `src/report-renderers.js` | 填報表格、統計顯示、CSV 匯出 |
-| `src/practice-main.js` | 切換畫面與儲存流程 |
-| `src/practice-api.js` | 本機示範／Google 模式 |
-| `src/data-model.js` | 兩種模式共用的計算與驗證 |
-| `apps-script/adapter.gs` | Google 端的讀寫與鎖定 |
-
-`Code.gs` 由共用的目錄、資料模型與 `adapter.gs` 合成。改動後執行 `npm run build`，再將新 `Code.gs` 貼回 Apps Script 並更新部署版本；不要只改產生出的 `Code.gs`。
-
-完整修改前後段落見 [docs/修改前後完整對照.md](docs/修改前後完整對照.md)。
-
-## 建置與檢查
+註冊確認信的 Site URL 已設定為上方網站網址。搬到其他網域時，須同步修改 Supabase Authentication → URL Configuration；不要加入不受自己控制的網址。
 
 ```powershell
 npm test
 npm run build
-npm start
+node scripts/prepare-hosted-site.mjs
+cd sites/nrop-practice
+npm run build
 ```
 
-建置後的本機服務在 http://127.0.0.1:4178 。需要本機 Node.js 的讀寫代理，不能只雙擊 `index.html` 或只把 `dist` 放到純靜態空間便期待 Google 模式可用。
+經 Sites skill 的來源推送、打包、儲存版本與發布流程更新同一 `project_id`。GitHub push 不代表 Sites 已更新。發布驗收需確認真正網站的登入、寫入及重新讀取。
 
-技術流程依 [Apps Script 網頁應用程式](https://developers.google.com/apps-script/guides/web) 與 [LockService](https://developers.google.com/apps-script/reference/lock/lock-service) 官方文件設計。
+## 學習與修改對照
 
-來源：原專案程式版本 `3e43eb5ff490e83ec5d75594a3f3aa11e5e2beb3`。這次沒有複製 `.git`、`.env.local`、Supabase 資料、正式帳號或部署設定。
+- [Google 改為 Supabase 的完整修改前後程式](docs/Google改為Supabase_完整對照.md)
+- [Supabase 切換與實際網站讀寫驗證](docs/Supabase切換與驗證.md)
+- [驗證紀錄](docs/驗證紀錄.md)
+- `docs/before-supabase` 保存本次修改前版本；其他舊文件屬歷史紀錄，不是目前部署步驟。
+
+SQL 由 `scripts/build-supabase-sql.mjs` 產生；改動目錄或 SQL 生成器後，執行 `npm run build` 再更新資料庫。`npm test` 使用明確檔案清單，含 PostgreSQL 引擎的 RLS、跨帳號與版本衝突測試。
+
+依據：[Supabase API keys](https://supabase.com/docs/guides/api/api-keys)、[RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)、[Database functions](https://supabase.com/docs/guides/database/functions)。請僅使用合成資料。

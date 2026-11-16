@@ -1,10 +1,10 @@
 {
-  "name": "nrop-sheets-practice",
-  "version": "0.1.0",
+  "name": "nrop-supabase-practice",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "node scripts/build-worker.mjs",
@@ -12,6 +12,10 @@
     "dev": "node scripts/preview-worker.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
     "vite": "7.3.7"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.0"
   }
 }

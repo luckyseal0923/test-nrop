@@ -1,8 +1,11 @@
 .env*
+env.local
 !.env.example
 node_modules/
 dist/
 outputs/
 coverage/
+.sites-runtime/
+.frontend/
 *.log
 .clasp.json

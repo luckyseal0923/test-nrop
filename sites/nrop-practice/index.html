@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NROP 練習工作區｜Google 試算表版</title>
+  <title>NROP 練習工作區｜Supabase 版</title>
   <link rel="stylesheet" href="./assets/theme.css">
   <link rel="stylesheet" href="./assets/practice.css">
 </head>
@@ -17,14 +17,21 @@
   <section class="login-card">
     <div class="practice-intro"><span class="eyebrow">NURSING OPERATIONS</span><h1>讓每一班的動態，<br>清楚有序。</h1><p>從熟悉的護理流程出發，<br>練習打造自己的資訊工作區。</p>
       <div class="practice-illustration" aria-hidden="true"><div class="illustration-top"><span>每日照護動態</span><i></i><i></i><i></i></div><div class="illustration-cards"><div>單位填報<strong>01</strong></div><div>床位動態<strong>02</strong></div><div>人力統計<strong>03</strong></div></div><div class="illustration-chart"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="illustration-bottom">N 班<span></span>D 班<span></span>E 班</div></div>
-      <small class="intro-note">暖白 × 森林綠 / GOOGLE SHEETS EDITION</small>
+      <small class="intro-note">暖白 × 森林綠 / SUPABASE EDITION</small>
     </div>
-    <div class="login-form"><span class="section-kicker">你的練習，從這裡開始</span><h2>NROP 練習模板</h2><p class="welcome-description">保留單位填報與管理儀表板，<br>用自己的試算表練習資料讀寫。</p>
-      <div class="connection-summary"><span class="connection-dot"></span><div><strong>Google 試算表</strong><p id="setupStatus">正在確認連線設定…</p></div></div>
-      <button class="btn btn-primary welcome-button" id="enterSheets" disabled>連接我的 Google 試算表 <span>↗</span></button>
+    <div class="login-form"><span class="section-kicker">你的練習，從這裡開始</span><h2>NROP 練習模板</h2><p class="welcome-description">保留單位填報與管理儀表板，<br>使用 Supabase 保存你的練習資料。</p>
+      <div class="connection-summary"><span class="connection-dot"></span><div><strong>Supabase</strong><p id="setupStatus">正在確認連線設定…</p></div></div>
+      <form id="supabaseLoginForm" class="supabase-login" hidden>
+        <label for="authEmail">登入信箱</label><input id="authEmail" type="email" autocomplete="username" required placeholder="你的電子郵件">
+        <label for="authPassword">密碼</label><input id="authPassword" type="password" autocomplete="current-password" required minlength="8" placeholder="至少 8 個字元">
+        <button class="btn btn-primary welcome-button" id="signIn" type="submit">登入並開始填報 <span>↗</span></button>
+        <button class="btn btn-soft welcome-button" id="signUp" type="button">建立練習帳號</button>
+      </form>
+      <button class="btn btn-primary welcome-button" id="resumeSupabase" hidden>繼續使用已登入帳號 <span>↗</span></button>
+      <button class="btn btn-link" id="signOutAccount" hidden>切換帳號</button>
       <button class="btn btn-soft welcome-button" id="enterDemo">先用合成範例練習 <span>→</span></button>
-      <p class="welcome-hint">示範模式只儲存在這個瀏覽器。<br>連接試算表後，填報資料才會寫入 Google。</p>
-      <details class="setup-details"><summary>關於這個練習工作區</summary><p>此網站僅供擁有者透過 ChatGPT 登入使用。選擇 Google 模式會儲存到你的練習試算表；示範模式只保存在目前瀏覽器。請使用合成資料。</p></details>
+      <p class="welcome-hint">登入後，每個帳號各自保存練習資料。<br>示範模式只儲存在目前瀏覽器。</p>
+      <details class="setup-details"><summary>關於練習帳號</summary><p>第一次註冊後，請到信箱完成確認，再返回登入。此工作區使用 Supabase 保存資料。請使用合成資料。</p></details>
       <button class="btn btn-link reset-demo" id="resetDemo">重設本機示範資料</button><div id="authMessage" class="notice hidden" role="status" aria-live="polite"></div>
     </div>
   </section>
@@ -77,7 +84,7 @@
       <article class="card dashboard-section"><div class="card-head"><div><h2>異常與漏填紀錄</h2><small style="color:var(--muted)">優先顯示過去未填寫、僅暫存及缺少必要欄位的資料</small></div><span class="status draft" id="alertCount">0 筆待處理</span></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>班別</th><th>單位</th><th>異常類型</th><th>異常內容</th><th>處理狀態</th></tr></thead><tbody id="alertTable"></tbody></table></div></article>
       <article class="card dashboard-section"><div class="card-head"><h2>異常通報判定規則</h2></div><div class="card-body"><div class="formula">漏填異常：過去班別沒有紀錄、只有暫存、實際上班人力或必填事件欄位缺值。營運提醒：住院人數超過有效床數。住院人數與空床數由系統自動計算，不列為人工填報異常；數字 0 是有效資料，也不視為漏填。</div></div></article>
     </section>
-<section id="connectionView" class="hidden"><article class="card"><div class="card-head"><h2>目前的資料來源</h2></div><div class="card-body"><div class="connection-grid"><div><small>現在的儲存位置</small><h3 id="currentStorage"></h3></div><div><small>Google 讀寫服務</small><h3 id="sheetConnectionLabel"></h3></div></div><a class="btn btn-soft sheet-link" id="sheetLink" target="_blank" rel="noopener" hidden>開啟我的練習試算表 ↗</a><p>兩種模式的資料各自獨立。Google 連線中斷時會提示錯誤，請重新整理確認結果。</p><p>練習表透過 Apps Script 讀寫。設定步驟見專案 README；此版未提供正式平台的帳號審核與多人權限。</p></div></article><article class="card dashboard-section"><div class="card-head"><h2>最近操作紀錄</h2></div><div class="table-wrap"><table><thead><tr><th>時間</th><th>操作</th><th>對象</th></tr></thead><tbody id="practiceAudit"></tbody></table></div></article></section>
+<section id="connectionView" class="hidden"><article class="card"><div class="card-head"><h2>目前的資料來源</h2></div><div class="card-body"><div class="connection-grid"><div><small>現在的儲存位置</small><h3 id="currentStorage"></h3></div><div><small>資料連線</small><h3 id="backendConnectionLabel"></h3></div></div><p>目前帳號：<strong id="currentAccount"></strong></p><p>每個帳號有自己的練習工作區。示範模式只保存在目前瀏覽器，不會寫入 Supabase。</p><p>這是個人練習版，不提供病房共用填報與多人審核流程。請使用合成資料。</p></div></article><article class="card dashboard-section"><div class="card-head"><h2>最近操作紀錄</h2></div><div class="table-wrap"><table><thead><tr><th>時間</th><th>操作</th><th>對象</th></tr></thead><tbody id="practiceAudit"></tbody></table></div></article></section>
     <section id="bedsView" class="hidden">
       <article class="card"><div class="card-head"><h2>有效病床數管理</h2><button type="button" class="btn btn-soft" id="reloadBedSettings">重新整理床數</button></div><div class="card-body">
         <p>指定生效日期，N／D／E 三班一併套用；生效日期以前的報表母數維持不變。可選今天或未來日期。</p>
@@ -128,7 +135,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <dialog id="resetDemoDialog"><h2>重設本機示範資料？</h2><p>這會清除這個瀏覽器的示範修改，重新建立今天的合成範例。Google 試算表不受影響。</p><div class="actions"><button id="cancelResetDemo" class="btn btn-soft">取消</button><button id="confirmResetDemo" class="btn btn-primary">重設示範</button></div></dialog>
+  <dialog id="resetDemoDialog"><h2>重設本機示範資料？</h2><p>這會清除這個瀏覽器的示範修改，重新建立今天的合成範例。Supabase 資料不受影響。</p><div class="actions"><button id="cancelResetDemo" class="btn btn-soft">取消</button><button id="confirmResetDemo" class="btn btn-primary">重設示範</button></div></dialog>
 <dialog id="leaveDialog"><h2>還有尚未儲存的內容</h2><p>返回入口會捨棄尚未儲存的修改。</p><div class="actions"><button id="cancelLeave" class="btn btn-soft">繼續編輯</button><button id="confirmLeave" class="btn btn-primary">返回入口</button></div></dialog>
 <script type="module" src="/src/practice-main.js"></script>
 </body>
