@@ -19,7 +19,7 @@ body { font-family:"Microsoft JhengHei",sans-serif; }
 .eyebrow { font-size:10px; letter-spacing:.22em; color:#b4cbaa; }
 .practice-intro h1 { font-size:35px; font-weight:600; line-height:1.65; margin:25px 0 15px; letter-spacing:.03em; }
 .practice-intro p { color:#bed0bc; line-height:1.9; font-size:14px; }
-.practice-illustration { background:#fafbf5; border:7px solid #ffffff19; background-clip:padding-box; border-radius:12px; padding:17px; margin:32px 0 26px; color:#48644d; transform:rotate(-2deg); box-shadow:0 15px 35px #102a3420; }
+.practice-illustration { background:#fafbf5; border:7px solid #ffffff19; background-clip:padding-box; border-radius:12px; padding:17px; margin:32px 0 26px; color:#48644d; box-shadow:0 15px 35px #102a3420; }
 .illustration-top { display:flex; gap:4px; align-items:center; font-size:10px; font-weight:bold; }
 .illustration-top span { margin-right:auto; }.illustration-top i { width:4px; height:4px; background:#b2c3a4; border-radius:100%; }
 .illustration-cards { display:flex; gap:10px; margin-top:16px; }.illustration-cards div { flex:1; background:#edf1e7; border-radius:5px; padding:10px; font-size:9px; }.illustration-cards strong { display:block; font-size:23px; margin-top:8px; font-weight:500; }
